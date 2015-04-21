@@ -1,6 +1,9 @@
 Overview
 ========
 
+Customized fork of http://github.com/limist/py-moneyed which adds
+ability to extend the core `Money` class.
+
 The need to represent instances of money frequently arises in software
 development, particularly any financial/economics software.  To
 address that need, the py-moneyed package provides the classes of
