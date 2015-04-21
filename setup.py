@@ -14,14 +14,12 @@ class Tox(TestCommand):
         sys.exit(errno)
 
 setup(
-    name='py-moneyed',
+    name='ud-py-moneyed',
     packages=find_packages('src'),
     package_dir={'': 'src'},
     version='0.5.1',
     description='Provides Currency and Money classes for use in your Python code.',
-    author='Kai',
-    author_email='k@limist.com',
-    url='http://github.com/limist/py-moneyed',
+    url='https://github.com/udemy/py-moneyed',
     download_url='',
     keywords="money currency class abstraction",
     license='BSD',
