@@ -17,7 +17,7 @@ setup(
     name='ud-py-moneyed',
     packages=find_packages('src'),
     package_dir={'': 'src'},
-    version='0.5.1',
+    version='0.5.2',
     description='Provides Currency and Money classes for use in your Python code.',
     url='https://github.com/udemy/py-moneyed',
     download_url='',
