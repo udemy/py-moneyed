@@ -1,11 +1,15 @@
 # -*- encoding: utf-8 -*-
-#file test_moneyed_classes.py
+
 from __future__ import division
 from __future__ import unicode_literals
+
+from copy import deepcopy
 from decimal import Decimal
+import warnings
+
 import pytest  # Works with less code, more consistency than unittest.
 
-from moneyed.classes import Currency, Money, MoneyComparisonError, CURRENCIES, DEFAULT_CURRENCY
+from moneyed.classes import Currency, Money, MoneyComparisonError, CURRENCIES, DEFAULT_CURRENCY, USD, get_currency
 from moneyed.localization import format_money
 
 
@@ -45,6 +49,21 @@ class TestCurrency:
 
     def test_repr(self):
         assert str(self.default_curr) == self.default_curr_code
+
+    def test_compare(self):
+        other = deepcopy(self.default_curr)
+        # equality
+        assert self.default_curr == CURRENCIES['XYZ']
+        assert self.default_curr == other
+        # non-equality
+        other.code = 'USD'
+        assert self.default_curr != other
+        assert self.default_curr != CURRENCIES['USD']
+
+    def test_fetching_currency_by_iso_code(self):
+        assert get_currency('USD') == USD
+        assert get_currency(iso='840') == USD
+        assert get_currency(iso=840) == USD
 
 
 class TestMoney:
@@ -122,6 +141,18 @@ class TestMoney:
         assert 3 * x == Money(333.99, currency=self.USD)
         assert Money(333.99, currency=self.USD) == 3 * x
 
+    def test_mul_float_warning(self):
+        # This should be changed to TypeError exception after deprecation period is over.
+        with warnings.catch_warnings(record=True) as warning_list:
+            warnings.simplefilter("always")
+            Money(amount="10") * 1.2
+            assert "Multiplying Money instances with floats is deprecated" in [w.message.args[0] for w in warning_list]
+
+        with warnings.catch_warnings(record=True) as warning_list:
+            warnings.simplefilter("always")
+            1.2 * Money(amount="10")
+            assert "Multiplying Money instances with floats is deprecated" in [w.message.args[0] for w in warning_list]
+
     def test_mul_bad(self):
         with pytest.raises(TypeError):
             self.one_million_bucks * self.one_million_bucks
@@ -142,6 +173,13 @@ class TestMoney:
         y = 2
         assert x / y == Money(amount=25, currency=self.USD)
 
+    def test_div_float_warning(self):
+        # This should be changed to TypeError exception after deprecation period is over.
+        with warnings.catch_warnings(record=True) as warning_list:
+            warnings.simplefilter("always")
+            Money(amount="10") / 1.2
+            assert "Dividing Money instances by floats is deprecated" in [w.message.args[0] for w in warning_list]
+
     def test_rmod(self):
         assert 1 % self.one_million_bucks == Money(amount=10000,
                                                    currency=self.USD)
@@ -150,6 +188,13 @@ class TestMoney:
         with pytest.raises(TypeError):
             assert (self.one_million_bucks % self.one_million_bucks
                     == 1)
+
+    def test_rmod_float_warning(self):
+        # This should be changed to TypeError exception after deprecation period is over.
+        with warnings.catch_warnings(record=True) as warning_list:
+            warnings.simplefilter("always")
+            2.0 % Money(amount="10")
+            assert "Calculating percentages of Money instances using floats is deprecated" in [w.message.args[0] for w in warning_list]
 
     def test_convert_to_default(self):
         # Currency conversions are not implemented as of 2/2011; when
@@ -165,9 +210,9 @@ class TestMoney:
         assert self.one_million_bucks != x
 
     def test_equality_to_other_types(self):
-        x = Money(amount=1, currency=self.USD)
-        assert self.one_million_bucks != None
-        assert self.one_million_bucks != {}
+        x = Money(amount=0, currency=self.USD)
+        assert x != None  # NOQA
+        assert x != {}
 
     def test_not_equal_to_decimal_types(self):
         assert self.one_million_bucks != self.one_million_decimal
@@ -195,11 +240,16 @@ class TestMoney:
         x = Money(amount=-1, currency=self.USD)
         assert abs(x) == abs_money
         y = Money(amount=1, currency=self.USD)
-        assert abs(x) == abs_money
+        assert abs(y) == abs_money
 
     def test_get_sub_unit(self):
         m = Money(amount=123, currency=self.USD)
         assert m.get_amount_in_sub_unit() == 12300
+
+    def test_sum(self):
+        assert (sum([Money(amount=1, currency=self.USD),
+                     Money(amount=2, currency=self.USD)]) ==
+                Money(amount=3, currency=self.USD))
 
     def test_arithmetic_operations_return_real_subclass_instance(self):
         """
@@ -238,6 +288,10 @@ class TestMoney:
         extended_money.do_my_behaviour()
         # throws error if `__mul__` doesn't return subclass instance
         (1 * extended_money).do_my_behaviour()
+
+    def test_bool(self):
+        assert bool(Money(amount=1, currency=self.USD))
+        assert not bool(Money(amount=0, currency=self.USD))
 
 
 class ExtendedMoney(Money):

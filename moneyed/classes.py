@@ -1,11 +1,16 @@
 # -*- coding: utf-8 -*-
+
 from __future__ import division
 from __future__ import unicode_literals
 
 from decimal import Decimal, ROUND_DOWN
+import sys
+import warnings
 
 # Default, non-existent, currency
 DEFAULT_CURRENCY_CODE = 'XYZ'
+
+PYTHON2 = sys.version_info[0] == 2
 
 
 class Currency(object):
@@ -13,16 +18,23 @@ class Currency(object):
     A Currency represents a form of money issued by governments, and
     used in one or more states/countries.  A Currency instance
     encapsulates the related data of: the ISO currency/numeric code, a
-    canonical name, countries the currency is used in, and an exchange
-    rate - the last remains unimplemented however.
+    canonical name, and countries the currency is used in.
     """
 
-    def __init__(self, code='', numeric='999', sub_unit=1, name='', countries=[]):
+    def __init__(self, code='', numeric='999', sub_unit=1, name='', countries=None):
+        if countries is None:
+            countries = []
         self.code = code
         self.countries = countries
         self.name = name
         self.numeric = numeric
         self.sub_unit = sub_unit
+
+    def __eq__(self, other):
+        return type(self) is type(other) and self.code == other.code
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
 
     def __repr__(self):
         return self.code
@@ -85,10 +97,14 @@ class Money(object):
 
     def __neg__(self):
         return self.__class__(
-            amount= -self.amount,
+            amount=-self.amount,
             currency=self.currency)
 
     def __add__(self, other):
+        if other == 0:
+            # This allows things like 'sum' to work on list of Money instances,
+            # just like list of Decimal.
+            return self
         if not isinstance(other, Money):
             raise TypeError('Cannot add or subtract a ' +
                             'Money and non-Money instance.')
@@ -107,6 +123,8 @@ class Money(object):
         if isinstance(other, Money):
             raise TypeError('Cannot multiply two Money instances.')
         else:
+            if isinstance(other, float):
+                warnings.warn("Multiplying Money instances with floats is deprecated", DeprecationWarning)
             return self.__class__(
                 amount=(self.amount * Decimal(str(other))),
                 currency=self.currency)
@@ -117,6 +135,8 @@ class Money(object):
                 raise TypeError('Cannot divide two different currencies.')
             return self.amount / other.amount
         else:
+            if isinstance(other, float):
+                warnings.warn("Dividing Money instances by floats is deprecated", DeprecationWarning)
             return self.__class__(
                 amount=self.amount / Decimal(str(other)),
                 currency=self.currency)
@@ -125,6 +145,12 @@ class Money(object):
         return self.__class__(
             amount=abs(self.amount),
             currency=self.currency)
+
+    def __bool__(self):
+        return bool(self.amount)
+
+    if PYTHON2:
+        __nonzero__ = __bool__
 
     def __rmod__(self, other):
         """
@@ -139,6 +165,8 @@ class Money(object):
         if isinstance(other, Money):
             raise TypeError('Invalid __rmod__ operation')
         else:
+            if isinstance(other, float):
+                warnings.warn("Calculating percentages of Money instances using floats is deprecated", DeprecationWarning)
             return self.__class__(
                 amount=(Decimal(str(other)) * self.amount / 100),
                 currency=self.currency)
@@ -151,9 +179,9 @@ class Money(object):
     # _______________________________________
     # Override comparison operators
     def __eq__(self, other):
-        return isinstance(other, Money)\
-               and (self.amount == other.amount) \
-               and (self.currency == other.currency)
+        return (isinstance(other, Money)
+                and (self.amount == other.amount)
+                and (self.currency == other.currency))
 
     def __ne__(self, other):
         result = self.__eq__(other)
@@ -189,6 +217,7 @@ class Money(object):
 # Source: http://www.iso.org/iso/support/faqs/faqs_widely_used_standards/widely_used_standards_other/currency_codes/currency_codes_list-1.htm
 
 CURRENCIES = {}
+CURRENCIES_BY_ISO = {}
 
 
 def add_currency(code, numeric, sub_unit, name, countries):
@@ -199,11 +228,14 @@ def add_currency(code, numeric, sub_unit, name, countries):
         sub_unit=sub_unit,
         name=name,
         countries=countries)
+    CURRENCIES_BY_ISO[numeric] = CURRENCIES[code]
     return CURRENCIES[code]
 
 
-def get_currency(code):
+def get_currency(code=None, iso=None):
     try:
+        if iso:
+            return CURRENCIES_BY_ISO[str(iso)]
         return CURRENCIES[code]
     except KeyError:
         raise CurrencyDoesNotExist(code)
@@ -250,11 +282,10 @@ DJF = add_currency('DJF', '262', 100, 'Djibouti Franc', ['DJIBOUTI'])
 DKK = add_currency('DKK', '208', 100, 'Danish Krone', ['DENMARK', 'FAROE ISLANDS', 'GREENLAND'])
 DOP = add_currency('DOP', '214', 100, 'Dominican Peso', ['DOMINICAN REPUBLIC'])
 DZD = add_currency('DZD', '012', 100, 'Algerian Dinar', ['ALGERIA'])
-EEK = add_currency('EEK', '233', 100, 'Kroon', ['ESTONIA'])
 EGP = add_currency('EGP', '818', 100, 'Egyptian Pound', ['EGYPT'])
 ERN = add_currency('ERN', '232', 100, 'Nakfa', ['ERITREA'])
 ETB = add_currency('ETB', '230', 100, 'Ethiopian Birr', ['ETHIOPIA'])
-EUR = add_currency('EUR', '978', 100, 'Euro', ['ANDORRA', 'AUSTRIA', 'BELGIUM', 'FINLAND', 'FRANCE', 'FRENCH GUIANA', 'FRENCH SOUTHERN TERRITORIES', 'GERMANY', 'GREECE', 'GUADELOUPE', 'IRELAND', 'ITALY', 'LUXEMBOURG', 'MARTINIQUE', 'MAYOTTE', 'MONACO', 'MONTENEGRO', 'NETHERLANDS', 'PORTUGAL', 'R.UNION', 'SAINT PIERRE AND MIQUELON', 'SAN MARINO', 'SLOVAKIA', 'SLOVENIA', 'SPAIN'])
+EUR = add_currency('EUR', '978', 100, 'Euro', ['AKROTIRI AND DHEKELIA', 'ANDORRA', 'AUSTRIA', 'BELGIUM', 'CYPRUS', 'ESTONIA', 'FINLAND', 'FRANCE', 'GERMANY', 'GREECE', 'GUADELOUPE', 'IRELAND', 'ITALY', 'KOSOVO', 'LATVIA', 'LITHUANIA', 'LUXEMBOURG', 'MALTA', 'MARTINIQUE', 'MAYOTTE', 'MONACO', 'MONTENEGRO', 'NETHERLANDS', 'PORTUGAL', 'RÉUNION', 'SAN MARINO', 'SAINT BARTHÉLEMY', 'SAINT PIERRE AND MIQUELON', 'SAN MARINO', 'SLOVAKIA', 'SLOVENIA', 'SPAIN', 'VATICAN CITY'])
 FJD = add_currency('FJD', '242', 100, 'Fiji Dollar', ['FIJI'])
 FKP = add_currency('FKP', '238', 100, 'Falkland Islands Pound', ['FALKLAND ISLANDS (MALVINAS)'])
 GBP = add_currency('GBP', '826', 100, 'Pound Sterling', ['UNITED KINGDOM'])
@@ -307,8 +338,8 @@ MOP = add_currency('MOP', '446', 100, 'Pataca', ['MACAO'])
 MRO = add_currency('MRO', '478', 5, 'Ouguiya', ['MAURITANIA'])
 MUR = add_currency('MUR', '480', 100, 'Mauritius Rupee', ['MAURITIUS'])
 MVR = add_currency('MVR', '462', 100, 'Rufiyaa', ['MALDIVES'])
-MWK = add_currency('MWK', '454', 100, 'Kwacha', ['MALAWI'])
-MXN = add_currency('MXN', '484', 100, 'Mexixan peso', ['MEXICO'])
+MWK = add_currency('MWK', '454', 100, 'Malawian Kwacha', ['MALAWI'])
+MXN = add_currency('MXN', '484', 100, 'Mexican peso', ['MEXICO'])
 MYR = add_currency('MYR', '458', 100, 'Malaysian Ringgit', ['MALAYSIA'])
 MZN = add_currency('MZN', '943', 100, 'Metical', ['MOZAMBIQUE'])
 NAD = add_currency('NAD', '516', 100, 'Namibian Dollar', ['NAMIBIA'])
@@ -316,7 +347,7 @@ NGN = add_currency('NGN', '566', 100, 'Naira', ['NIGERIA'])
 NIO = add_currency('NIO', '558', 100, 'Cordoba Oro', ['NICARAGUA'])
 NOK = add_currency('NOK', '578', 100, 'Norwegian Krone', ['BOUVET ISLAND', 'NORWAY', 'SVALBARD AND JAN MAYEN'])
 NPR = add_currency('NPR', '524', 100, 'Nepalese Rupee', ['NEPAL'])
-NZD = add_currency('NZD', '554', 100, 'New Zealand Dollar', ['COOK ISLANDS', ', prefix=None, suffix=NoneNEW ZEALAND', 'NIUE', 'PITCAIRN', 'TOKELAU'])
+NZD = add_currency('NZD', '554', 100, 'New Zealand Dollar', ['COOK ISLANDS', 'NEW ZEALAND', 'NIUE', 'PITCAIRN', 'TOKELAU'])
 OMR = add_currency('OMR', '512', 1000, 'Rial Omani', ['OMAN'])
 PEN = add_currency('PEN', '604', 100, 'Nuevo Sol', ['PERU'])
 PGK = add_currency('PGK', '598', 100, 'Kina', ['PAPUA NEW GUINEA'])
@@ -379,7 +410,8 @@ XPT = add_currency('XPT', '962', 100, 'Platinum', [])
 XTS = add_currency('XTS', '963', 100, 'Codes specifically reserved for testing purposes', [])
 YER = add_currency('YER', '886', 100, 'Yemeni Rial', ['YEMEN'])
 ZAR = add_currency('ZAR', '710', 100, 'Rand', ['SOUTH AFRICA'])
-ZMK = add_currency('ZMK', '894', 100, 'Kwacha', ['ZAMBIA'])
+ZMK = add_currency('ZMK', '894', 100, 'Zambian Kwacha', [])  # historical
+ZMW = add_currency('ZMW', '967', 100, 'Zambian Kwacha', ['ZAMBIA'])
 ZWD = add_currency('ZWD', '716', 100, 'Zimbabwe Dollar A/06', ['ZIMBABWE'])
 ZWL = add_currency('ZWL', '932', 100, 'Zimbabwe dollar A/09', ['ZIMBABWE'])
 ZWN = add_currency('ZWN', '942', 100, 'Zimbabwe dollar A/08', ['ZIMBABWE'])
