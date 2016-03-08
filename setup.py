@@ -20,7 +20,7 @@ class Tox(TestCommand):
 setup(
     name='ud-py-moneyed',
     packages=['moneyed'],
-    version='0.6.1',
+    version='0.6.2',
     description='Provides Currency and Money classes for use in your Python code.',
     url='https://github.com/udemy/py-moneyed',
     download_url='',
