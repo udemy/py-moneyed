@@ -38,7 +38,8 @@ class CurrencyFormatter(object):
     def get_sign_definition(self, currency_code, locale):
         currency_code = currency_code.upper()
 
-        if locale.upper() not in self.sign_definitions:
+        if (locale.upper() not in self.sign_definitions) or (
+                currency_code not in self.sign_definitions[locale.upper()]):
             locale = DEFAULT
 
         local_set = self.sign_definitions.get(locale.upper())
