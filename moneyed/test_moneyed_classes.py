@@ -120,6 +120,17 @@ class TestMoney:
         assert format_money(one_million_pln, locale='pl_PL',
                             decimal_places=0) == '1 000 000 zł'
 
+    def test_format_money_uses_default_formatting_definition_if_given_locale_not_registered(self):
+        m1 = Money(Decimal('100'), 'GBP')
+
+        # should format with 'default' formatting definition
+        expected_default_formatting = format_money(m1)
+
+        # should format with 'default' formatting definition since
+        # 'en_AU' is not a registered formatting definition
+        returned_formatting = format_money(m1, locale='en_AU')
+        assert returned_formatting == expected_default_formatting
+
     def test_add(self):
         assert (self.one_million_bucks + self.one_million_bucks
                 == Money(amount='2000000', currency=self.USD))
