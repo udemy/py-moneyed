@@ -53,7 +53,7 @@ class CurrencyFormatter(object):
         if locale in self.formatting_definitions:
             return self.formatting_definitions.get(locale)
         else:
-            return self.formatting_definitions.get(DEFAULT)
+            return self.formatting_definitions.get(DEFAULT.upper())
 
     def format(self, money, include_symbol=True, locale=DEFAULT,
                decimal_places=None, rounding_method=None):
