@@ -10,7 +10,7 @@ import warnings
 import pytest  # Works with less code, more consistency than unittest.
 
 from moneyed.classes import Currency, Money, MoneyComparisonError, CURRENCIES, DEFAULT_CURRENCY, USD, get_currency
-from moneyed.localization import format_money
+from moneyed.localization import format_money, CurrencyFormatter
 
 
 class TestCurrency:
@@ -115,7 +115,7 @@ class TestMoney:
         one_million_pln = Money('1000000', 'PLN')
         # Two decimal places by default
         assert format_money(one_million_pln, locale='pl_PL') == '1 000 000,00 zł'
-        assert format_money(self.one_million_bucks, locale='pl_PL') == '1 000 000,00 USD'
+        assert format_money(self.one_million_bucks, locale='pl_PL') == 'US$1 000 000,00'
         # No decimal point without fractional part
         assert format_money(one_million_pln, locale='pl_PL',
                             decimal_places=0) == '1 000 000 zł'
@@ -303,6 +303,19 @@ class TestMoney:
     def test_bool(self):
         assert bool(Money(amount=1, currency=self.USD))
         assert not bool(Money(amount=0, currency=self.USD))
+
+
+class TestCurrencyFormatter:
+
+    def test_get_sign_definition_falls_back_to_default_if_currency_not_found_in_given_locale(self):
+        # should fall back to default since although 'en_US' symbol definition exists, it's only
+        # for 'USD' currency. So, for other currencies (not defined in symbol def list of 'USD'),
+        #  it should use DEFAULT symbols instead.
+        formatter = CurrencyFormatter()
+        returned_gbp_sign_definition = formatter.get_sign_definition('GBP', 'en_US')
+        expected_gbp_sign_definition = formatter.get_sign_definition('GBP', 'default')
+
+        assert expected_gbp_sign_definition == returned_gbp_sign_definition
 
 
 class ExtendedMoney(Money):
